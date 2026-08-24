@@ -264,6 +264,10 @@ body.overview .slide *{pointer-events:none}
 body.overview .slide.active{outline:12px solid #38b580;outline-offset:-12px}
 body.overview #notesPanel,body.overview #hud{display:none!important}
 
+/* ---------- click-to-reveal bullets (add class "reveal" to a <ul>) ---------- */
+.reveal li{opacity:0;transform:translateY(8px);transition:opacity .35s ease,transform .35s ease}
+.reveal li.on{opacity:1;transform:none}
+
 /* ---------- print / PDF ---------- */
 @media print{
   @page{size:1280px 720px;margin:0}
@@ -273,6 +277,7 @@ body.overview #notesPanel,body.overview #hud{display:none!important}
   .slide{display:flex!important;position:relative;inset:auto;page-break-after:always;
     width:1280px;height:720px;box-shadow:none}
   #progress,#hud,#help,#notesPanel{display:none!important}
+  .reveal li{opacity:1!important;transform:none!important}
 }
 </style>
 </head>
@@ -1018,14 +1023,14 @@ docker scout cves my-app:1.2.0</pre>
 <section class="slide statement">
   <div class="q">Is Docker enough to run a reliable, scalable application?</div>
   <div class="body" style="margin-top:34px">
-    <ul class="b" style="font-size:22px">
+    <ul class="b reveal" style="font-size:22px">
       <li>How do you add scalability and redundancy to your containers?</li>
       <li>How do you handle updating your containers without downtime?</li>
       <li>How do you make the app inside a container reachable?</li>
       <li>How do you manage many apps and many containers together?</li>
     </ul>
   </div>
-  <aside class="notes"><ul><li>Reveal these one by one if you can. Let them answer before you show the next.</li><li>Answer: no. docker run gives you a process, not a system.</li></ul></aside>
+  <aside class="notes"><ul><li>These now reveal one by one as you press &rarr;/Space — let them answer before you show the next.</li><li>Answer: no. docker run gives you a process, not a system.</li></ul></aside>
 </section>
 
 <section class="slide light">
@@ -1643,7 +1648,7 @@ docker scout cves my-app:1.2.0</pre>
 <div id="help"><div class="box">
   <h3>Keyboard</h3>
   <dl>
-    <dt>&rarr; &darr; Space</dt><dd>next slide</dd>
+    <dt>&rarr; &darr; Space</dt><dd>next slide (or next bullet, on a slide with reveals)</dd>
     <dt>&larr; &uarr;</dt><dd>previous slide</dd>
     <dt>Home / End</dt><dd>first / last slide</dd>
     <dt>S</dt><dd>back to the start of this section</dd>
@@ -1753,6 +1758,8 @@ docker scout cves my-app:1.2.0</pre>
     renderNotes();
     autofit(slides[cur]);
     if (location.hash !== '#' + (cur + 1)) history.replaceState(null, '', '#' + (cur + 1));
+    // Every visit to a slide with a "reveal" list starts with its bullets hidden again.
+    slides[cur].querySelectorAll('.reveal li').forEach(function(li){ li.classList.remove('on'); });
     fit();
   }
 
@@ -1782,8 +1789,16 @@ docker scout cves my-app:1.2.0</pre>
   document.addEventListener('keydown', function(e){
     if (help.classList.contains('on')) { help.classList.remove('on'); e.preventDefault(); return; }
     var k = e.key;
-    if (k === 'ArrowRight' || k === 'ArrowDown' || k === ' ' || k === 'PageDown') { go(cur + 1); e.preventDefault(); }
-    else if (k === 'ArrowLeft' || k === 'ArrowUp' || k === 'PageUp') { go(cur - 1); e.preventDefault(); }
+    if (k === 'ArrowRight' || k === 'ArrowDown' || k === ' ' || k === 'PageDown') {
+      var toReveal = slides[cur].querySelector('.reveal li:not(.on)');
+      if (toReveal) { toReveal.classList.add('on'); } else { go(cur + 1); }
+      e.preventDefault();
+    }
+    else if (k === 'ArrowLeft' || k === 'ArrowUp' || k === 'PageUp') {
+      var revealed = slides[cur].querySelectorAll('.reveal li.on');
+      if (revealed.length) { revealed[revealed.length - 1].classList.remove('on'); } else { go(cur - 1); }
+      e.preventDefault();
+    }
     else if (k === 'Home') { go(0); }
     else if (k === 'End') { go(slides.length - 1); }
     else if (k === 's' || k === 'S') { sectionStart(); }
