@@ -1,0 +1,38 @@
+name: CI
+
+on:
+  pull_request:
+    branches: [main]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.11", "3.12"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - run: pip install ruff pytest
+      - run: ruff check lambda tests
+      - run: pytest
+
+  terraform:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: hashicorp/setup-terraform@v3
+      - run: terraform fmt -check
+        working-directory: terraform
+      - run: terraform init -backend=false
+        working-directory: terraform
+      - run: terraform validate
+        working-directory: terraform
+
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: docker build -t ra-cicd:pr-${{ github.event.number }} lambda
