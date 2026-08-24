@@ -10,7 +10,7 @@ terraform {
 
 # Talks to Floci (a local AWS emulator, https://floci.io) instead of a real
 # account. Same provider, same resources — only these overrides differ from
-# a real deployment. Pattern matches chat-agent-demo/terraform/main.tf.
+# a real deployment.
 provider "aws" {
   region                      = var.aws_region
   access_key                  = "test"
@@ -21,7 +21,6 @@ provider "aws" {
 
   endpoints {
     lambda = var.floci_endpoint
-    ecr    = var.floci_endpoint
     iam    = var.floci_endpoint
     sts    = var.floci_endpoint
   }
@@ -39,15 +38,10 @@ resource "aws_iam_role" "lambda_exec" {
   })
 }
 
-locals {
-  # See variables.tf for why this isn't aws_ecr_repository.app.repository_url.
-  image_uri = "${var.ecr_host_endpoint}/${aws_ecr_repository.app.name}:${var.image_tag}"
-}
-
 resource "aws_lambda_function" "app" {
   function_name = "ra-cicd-${var.environment}"
   role          = aws_iam_role.lambda_exec.arn
   package_type  = "Image"
-  image_uri     = local.image_uri
+  image_uri     = "${var.ecr_repository_url}:${var.image_tag}"
   timeout       = 10
 }

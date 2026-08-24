@@ -1490,15 +1490,18 @@ docker scout cves my-app:1.2.0</pre>
           <li>Bonus: smoke test the dev deploy</li></ul></div>
       <div class="card"><span class="tag grey">Part 3 · bonus</span><h4 style="margin-top:10px;color:#6b6b6b">Continuous deployment</h4>
         <ul><li>Retag the dev image, do not rebuild</li>
-          <li>Deploy to production</li><li>Runs only when a git tag is created</li>
+          <li>Deploy to production</li><li>Gated by a required reviewer on a GitHub <code>production</code> environment</li>
           <li>Bonus: smoke test production</li></ul></div>
     </div>
     <div class="input-note">
       <span class="hdr">Input needed</span>
       Two repos exist: <code>rootsacademy-cicd-exercise</code> (AWS) and the <code>-azure</code> variant.
       You chose AWS: check the first one still works and copy it to a 2026 repo, with Floci wired
-      in instead of a real AWS account (see the CI workflow's <code>floci/floci</code> service container).
-      No IAM users or ECR repos to provision — each student's pipeline run gets its own throwaway Floci instance.
+      in instead of a real AWS account (see the CD workflow's <code>floci/floci</code> service container).
+      No IAM users or ECR repos to provision — each job gets its own throwaway Floci instance.
+      One thing you do need to set up per student repo: a <code>production</code> GitHub environment
+      with a required reviewer, so the Part 3 job actually pauses for approval
+      (repo Settings &rarr; Environments &rarr; New environment).
     </div>
   </div>
 </section>

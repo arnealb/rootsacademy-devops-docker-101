@@ -1,36 +1,32 @@
-name: CD (dev)
+name: CD
 
 on:
   push:
     branches: [main]
-
-permissions:
-  contents: read
-  packages: write   # push to ghcr.io — the durable image store, see README
 
 env:
   AWS_REGION: us-east-1
   AWS_ACCESS_KEY_ID: test
   AWS_SECRET_ACCESS_KEY: test
   AWS_ENDPOINT_URL: http://localhost:4566
-  GHCR_IMAGE: ghcr.io/${{ github.repository }}
 
 jobs:
+  # Part 2 · continuous delivery — runs on every push to main.
   deploy-dev:
     runs-on: ubuntu-latest
+    outputs:
+      image_tag: ${{ steps.tag.outputs.value }}
     services:
       floci:
         image: floci/floci:latest
         ports: ["4566:4566"]
-        # Floci needs the host's Docker socket to run the sibling containers
-        # it emulates services with (the ECR registry, the Lambda executor).
+        # Floci needs the host's Docker socket to run the ECR registry it emulates with.
         options: >-
           -v /var/run/docker.sock:/var/run/docker.sock
           --health-cmd "curl -f http://localhost:4566/_floci/health || exit 1"
           --health-interval 5s --health-retries 10
     steps:
       - uses: actions/checkout@v4
-      # ubuntu-latest ships AWS CLI v2 already — AWS_ENDPOINT_URL above is enough to point it at Floci
 
       - id: tag
         run: |
@@ -38,57 +34,99 @@ jobs:
           echo "value=dev-${VERSION}-${GITHUB_SHA::7}" >> "$GITHUB_OUTPUT"
 
       - name: Build once
-        run: docker build -t "$GHCR_IMAGE:${{ steps.tag.outputs.value }}" lambda
+        run: docker build -t ra-cicd:${{ steps.tag.outputs.value }} lambda
 
-      # The durable copy: Floci resets on every job, so this is what "build once,
-      # promote the same bytes to prod" retags from later — a real ECR would play this role.
-      - name: Push the durable copy to GHCR
+      # Hand the built image to the deploy-prod job as a plain file — no
+      # registry needed for that, and it makes "build once, promote the same
+      # bytes" concrete: it's literally the same tar being unpacked twice.
+      - name: Save the image for deploy-prod
+        run: docker save ra-cicd:${{ steps.tag.outputs.value }} -o image.tar
+      - uses: actions/upload-artifact@v4
+        with:
+          name: image
+          path: image.tar
+
+      - name: Push to Floci's ECR
+        id: push
         run: |
-          echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u "${{ github.actor }}" --password-stdin
-          docker push "$GHCR_IMAGE:${{ steps.tag.outputs.value }}"
+          aws ecr create-repository --repository-name ra-cicd 2>/dev/null || true
+          # Floci's registry publishes on a discovered host port, not always
+          # the same one twice (it defaults to 5100, but shifts if that's
+          # taken — 5000 itself collides with macOS AirPlay Receiver).
+          PORT=$(docker port floci-ecr-registry 5000/tcp | head -1 | sed 's/.*://')
+          REPO_URL="localhost:${PORT:-5100}/ra-cicd"
+          aws ecr get-login-password | docker login --username AWS --password-stdin "localhost:${PORT:-5100}"
+          docker tag ra-cicd:${{ steps.tag.outputs.value }} "$REPO_URL:${{ steps.tag.outputs.value }}"
+          docker push "$REPO_URL:${{ steps.tag.outputs.value }}"
+          echo "repo_url=$REPO_URL" >> "$GITHUB_OUTPUT"
 
       - uses: hashicorp/setup-terraform@v3
       - working-directory: terraform
         run: terraform init
-
-      # Create just the ECR repo first — its name is all the image push needs,
-      # and Terraform requires a value for every declared variable regardless
-      # of -target, so the placeholders below are never actually used.
-      - name: Create the ECR repo in this run's Floci
-        working-directory: terraform
-        run: |
-          terraform apply -auto-approve -target=aws_ecr_repository.app \
-            -var environment=unused -var image_tag=unused -var ecr_host_endpoint=unused
-
-      # Floci's repository_url reports the registry's internal container port
-      # (5000); the host Docker daemon that pulls the Lambda image reaches it
-      # on the port Floci actually published instead. See terraform/variables.tf.
-      - name: Discover the registry's host-published port
-        id: registry
-        working-directory: terraform
-        run: |
-          REPO_NAME=$(terraform output -raw ecr_repository_name)
-          PORT=$(docker port floci-ecr-registry 5000/tcp 2>/dev/null | head -1 | sed 's/.*://')
-          echo "host=localhost:${PORT:-5100}" >> "$GITHUB_OUTPUT"
-          echo "repo_name=$REPO_NAME" >> "$GITHUB_OUTPUT"
-
-      - name: Push into Floci's ECR
-        run: |
-          REPO_URL="${{ steps.registry.outputs.host }}/${{ steps.registry.outputs.repo_name }}"
-          aws ecr get-login-password | docker login --username AWS --password-stdin "${{ steps.registry.outputs.host }}"
-          docker tag "$GHCR_IMAGE:${{ steps.tag.outputs.value }}" "$REPO_URL:${{ steps.tag.outputs.value }}"
-          docker push "$REPO_URL:${{ steps.tag.outputs.value }}"
-
-      - name: Deploy the Lambda
-        working-directory: terraform
+      - working-directory: terraform
         run: |
           terraform apply -auto-approve \
             -var environment=dev \
-            -var image_tag=${{ steps.tag.outputs.value }} \
-            -var ecr_host_endpoint=${{ steps.registry.outputs.host }}
+            -var ecr_repository_url=${{ steps.push.outputs.repo_url }} \
+            -var image_tag=${{ steps.tag.outputs.value }}
 
       - name: Smoke test
         run: |
           aws lambda invoke --function-name ra-cicd-dev --payload '{"queryStringParameters":{"name":"ci"}}' \
             --cli-binary-format raw-in-base64-out response.json
           grep -q '"hello, ci"' response.json
+
+  # Part 3 · bonus · continuous deployment — gated by GitHub's own manual
+  # approval feature. Configure a "production" environment with a required
+  # reviewer under repo Settings > Environments; this job then pauses until
+  # someone approves it. That replaces the slide's "runs only on a git tag" —
+  # simpler to wire up for training, and a more common real-world pattern.
+  deploy-prod:
+    needs: deploy-dev
+    runs-on: ubuntu-latest
+    environment: production
+    services:
+      floci:
+        image: floci/floci:latest
+        ports: ["4566:4566"]
+        options: >-
+          -v /var/run/docker.sock:/var/run/docker.sock
+          --health-cmd "curl -f http://localhost:4566/_floci/health || exit 1"
+          --health-interval 5s --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: image
+      - name: Load the exact image deploy-dev built — never rebuild for prod
+        run: docker load -i image.tar
+
+      - name: Retag and push to this job's Floci's ECR
+        id: push
+        run: |
+          aws ecr create-repository --repository-name ra-cicd 2>/dev/null || true
+          PORT=$(docker port floci-ecr-registry 5000/tcp | head -1 | sed 's/.*://')
+          REPO_URL="localhost:${PORT:-5100}/ra-cicd"
+          PROD_TAG="prod-${{ needs.deploy-dev.outputs.image_tag }}"
+          aws ecr get-login-password | docker login --username AWS --password-stdin "localhost:${PORT:-5100}"
+          docker tag ra-cicd:${{ needs.deploy-dev.outputs.image_tag }} "$REPO_URL:$PROD_TAG"
+          docker push "$REPO_URL:$PROD_TAG"
+          echo "repo_url=$REPO_URL" >> "$GITHUB_OUTPUT"
+          echo "tag=$PROD_TAG" >> "$GITHUB_OUTPUT"
+
+      - uses: hashicorp/setup-terraform@v3
+      - working-directory: terraform
+        run: terraform init
+      - working-directory: terraform
+        run: |
+          terraform apply -auto-approve \
+            -var environment=prod \
+            -var ecr_repository_url=${{ steps.push.outputs.repo_url }} \
+            -var image_tag=${{ steps.push.outputs.tag }}
+
+      - name: Smoke test
+        run: |
+          aws lambda invoke --function-name ra-cicd-prod --payload '{"queryStringParameters":{"name":"prod"}}' \
+            --cli-binary-format raw-in-base64-out response.json
+          grep -q '"hello, prod"' response.json
