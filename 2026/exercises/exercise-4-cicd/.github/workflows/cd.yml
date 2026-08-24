@@ -13,7 +13,6 @@ env:
   AWS_ACCESS_KEY_ID: test
   AWS_SECRET_ACCESS_KEY: test
   AWS_ENDPOINT_URL: http://localhost:4566
-  ECR_REPOSITORY: ra-cicd
   GHCR_IMAGE: ghcr.io/${{ github.repository }}
 
 jobs:
@@ -23,8 +22,11 @@ jobs:
       floci:
         image: floci/floci:latest
         ports: ["4566:4566"]
+        # Floci needs the host's Docker socket to run the sibling containers
+        # it emulates services with (the ECR registry, the Lambda executor).
         options: >-
-          --health-cmd "curl -f http://localhost:4566/_localstack/health || exit 1"
+          -v /var/run/docker.sock:/var/run/docker.sock
+          --health-cmd "curl -f http://localhost:4566/_floci/health || exit 1"
           --health-interval 5s --health-retries 10
     steps:
       - uses: actions/checkout@v4
@@ -45,27 +47,45 @@ jobs:
           echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u "${{ github.actor }}" --password-stdin
           docker push "$GHCR_IMAGE:${{ steps.tag.outputs.value }}"
 
-      - name: Create the ECR repo in this run's Floci and load the image into it
-        run: |
-          aws ecr create-repository --repository-name "$ECR_REPOSITORY"
-          REPO_URL=$(aws ecr describe-repositories --repository-names "$ECR_REPOSITORY" \
-                       --query 'repositories[0].repositoryUri' --output text)
-          echo "REPO_URL=$REPO_URL" >> "$GITHUB_ENV"
-          aws ecr get-login-password | docker login --username AWS --password-stdin "$REPO_URL"
-          docker tag "$GHCR_IMAGE:${{ steps.tag.outputs.value }}" "$REPO_URL:${{ steps.tag.outputs.value }}"
-          docker push "$REPO_URL:${{ steps.tag.outputs.value }}"
-
       - uses: hashicorp/setup-terraform@v3
-
       - working-directory: terraform
         run: terraform init
 
-      - working-directory: terraform
+      # Create just the ECR repo first — its name is all the image push needs,
+      # and Terraform requires a value for every declared variable regardless
+      # of -target, so the placeholders below are never actually used.
+      - name: Create the ECR repo in this run's Floci
+        working-directory: terraform
+        run: |
+          terraform apply -auto-approve -target=aws_ecr_repository.app \
+            -var environment=unused -var image_tag=unused -var ecr_host_endpoint=unused
+
+      # Floci's repository_url reports the registry's internal container port
+      # (5000); the host Docker daemon that pulls the Lambda image reaches it
+      # on the port Floci actually published instead. See terraform/variables.tf.
+      - name: Discover the registry's host-published port
+        id: registry
+        working-directory: terraform
+        run: |
+          REPO_NAME=$(terraform output -raw ecr_repository_name)
+          PORT=$(docker port floci-ecr-registry 5000/tcp 2>/dev/null | head -1 | sed 's/.*://')
+          echo "host=localhost:${PORT:-5100}" >> "$GITHUB_OUTPUT"
+          echo "repo_name=$REPO_NAME" >> "$GITHUB_OUTPUT"
+
+      - name: Push into Floci's ECR
+        run: |
+          REPO_URL="${{ steps.registry.outputs.host }}/${{ steps.registry.outputs.repo_name }}"
+          aws ecr get-login-password | docker login --username AWS --password-stdin "${{ steps.registry.outputs.host }}"
+          docker tag "$GHCR_IMAGE:${{ steps.tag.outputs.value }}" "$REPO_URL:${{ steps.tag.outputs.value }}"
+          docker push "$REPO_URL:${{ steps.tag.outputs.value }}"
+
+      - name: Deploy the Lambda
+        working-directory: terraform
         run: |
           terraform apply -auto-approve \
             -var environment=dev \
-            -var ecr_repository_url=$REPO_URL \
-            -var image_tag=${{ steps.tag.outputs.value }}
+            -var image_tag=${{ steps.tag.outputs.value }} \
+            -var ecr_host_endpoint=${{ steps.registry.outputs.host }}
 
       - name: Smoke test
         run: |

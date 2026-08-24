@@ -13,6 +13,7 @@ the first 30 minutes.
 | Python 3.11 or newer | Run the exercise apps and tests | `python3 --version` |
 | Terraform >= 1.5 | Deploy the exercise 4 Lambda | `terraform -version` |
 | AWS CLI v2 | Talk to Floci, the local AWS emulator (exercise 4) | `aws --version` |
+| [Floci](https://floci.io) | Local AWS emulator (exercise 4) — LocalStack's discontinued, this is the drop-in replacement | `floci status` |
 
 You do **not** need a real AWS account. Exercise 4 runs against
 [Floci](https://floci.io), a local AWS emulator — everything happens on
@@ -25,6 +26,7 @@ You do **not** need a real AWS account. Exercise 4 runs against
 ```bash
 brew install --cask docker        # then open Docker.app once, so the daemon starts
 brew install git python terraform awscli
+brew install floci-io/floci/floci
 ```
 
 ### Windows
@@ -34,6 +36,7 @@ brew install git python terraform awscli
 - Python: https://www.python.org/downloads/ (check "Add to PATH" during install)
 - Terraform: `winget install Hashicorp.Terraform`
 - AWS CLI: `winget install Amazon.AWSCLI`
+- Floci (PowerShell): `iwr https://floci.io/install.ps1 | iex`
 
 ### Linux (Debian/Ubuntu)
 
@@ -46,6 +49,7 @@ curl -fsSL https://apt.releases.hashicorp.com/gpg | sudo gpg --dearmor -o /usr/s
 echo "deb [signed-by=/usr/share/keyrings/hashicorp.gpg] https://apt.releases.hashicorp.com $(lsb_release -cs) main" | sudo tee /etc/apt/sources.list.d/hashicorp.list
 sudo apt-get update && sudo apt-get install -y terraform
 curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o awscliv2.zip && unzip awscliv2.zip && sudo ./aws/install
+curl -fsSL https://floci.io/install.sh | sh
 ```
 
 ## Verify everything before the session
@@ -56,11 +60,15 @@ git --version
 python3 --version
 terraform -version
 aws --version
+floci doctor
 ```
 
-All five should print a version or a success message with no errors. If
+All six should print a version or a success message with no errors. If
 `docker run hello-world` fails, Docker Desktop probably isn't running yet —
 open the app and wait for the whale icon in the menu bar/tray to go steady.
+`floci doctor` runs its own diagnostics and needs Docker running too, since
+Floci itself runs as a container and mounts the Docker socket to emulate
+services like ECR and Lambda.
 
 ## Accounts
 
