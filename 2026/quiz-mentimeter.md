@@ -30,17 +30,17 @@ slide and copy these in manually (no bulk import on the free plan).
 - C) Use a bigger base image
 - D) Skip testing
 
-**5. Install a package, remove it later. Image size?**
-- A) Shrinks, it's gone
-- B) ✅ Same, layers only add
-- C) Shrinks, apt only
-- D) Depends on base
+**5. Infra changes should be:**
+- A) Click in the console
+- B) ✅ Described in code
+- C) Manual, then documented
+- D) Left to whoever's on call
 
-**6. `python:3.12` → `alpine` to save space. Catch?**
-- A) No catch, smaller wins
-- B) Alpine has no Python
-- C) ✅ musl breaks ML wheels
-- D) Can't run as non-root
+**6. The cloud's "rent, don't own" means:**
+- A) Buy servers upfront
+- B) ✅ Pay as you go, on demand
+- C) One-time license fee
+- D) You own the hardware
 
 **7. A Kubernetes Service gives you:**
 - A) Secret storage
@@ -60,8 +60,8 @@ slide and copy these in manually (no bulk import on the free plan).
 - C) One branch per env
 - D) Fork + PR only
 
-**10. Best way to move dev → prod?**
-- A) Rebuild per env
-- B) ✅ Build once, retag
-- C) Deploy from laptop
-- D) SCP to servers
+**10. Who should get paged when it breaks?**
+- A) A separate ops team
+- B) ✅ The team that built it
+- C) Whoever's cheapest
+- D) No one, automated
