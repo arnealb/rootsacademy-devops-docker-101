@@ -3,8 +3,10 @@ name: CD
 on:
   push:
     branches: [main]
+    paths: ["2026/exercises/exercise-4-cicd/**"]
 
 env:
+  EX: 2026/exercises/exercise-4-cicd
   AWS_REGION: us-east-1
   AWS_ACCESS_KEY_ID: test
   AWS_SECRET_ACCESS_KEY: test
@@ -29,25 +31,29 @@ jobs:
       - uses: actions/checkout@v4
 
       - id: tag
+        working-directory: ${{ env.EX }}
         run: |
           VERSION=$(grep -m1 version pyproject.toml | cut -d'"' -f2)
           echo "value=dev-${VERSION}-${GITHUB_SHA::7}" >> "$GITHUB_OUTPUT"
 
       - name: Build once
+        working-directory: ${{ env.EX }}
         run: docker build -t ra-cicd:${{ steps.tag.outputs.value }} lambda
 
       # Hand the built image to the deploy-prod job as a plain file — no
       # registry needed for that, and it makes "build once, promote the same
       # bytes" concrete: it's literally the same tar being unpacked twice.
       - name: Save the image for deploy-prod
+        working-directory: ${{ env.EX }}
         run: docker save ra-cicd:${{ steps.tag.outputs.value }} -o image.tar
       - uses: actions/upload-artifact@v4
         with:
           name: image
-          path: image.tar
+          path: ${{ env.EX }}/image.tar
 
       - name: Push to Floci's ECR
         id: push
+        working-directory: ${{ env.EX }}
         run: |
           aws ecr create-repository --repository-name ra-cicd 2>/dev/null || true
           # Floci's registry publishes on a discovered host port, not always
@@ -61,9 +67,9 @@ jobs:
           echo "repo_url=$REPO_URL" >> "$GITHUB_OUTPUT"
 
       - uses: hashicorp/setup-terraform@v3
-      - working-directory: terraform
+      - working-directory: ${{ env.EX }}/terraform
         run: terraform init
-      - working-directory: terraform
+      - working-directory: ${{ env.EX }}/terraform
         run: |
           terraform apply -auto-approve \
             -var environment=dev \
@@ -74,7 +80,9 @@ jobs:
         run: |
           aws lambda invoke --function-name ra-cicd-dev --payload '{"queryStringParameters":{"name":"ci"}}' \
             --cli-binary-format raw-in-base64-out response.json
-          grep -q '"hello, ci"' response.json
+          cat response.json
+          grep -q '"message": "hello, ci"' response.json
+          grep -q '"file_count": 3' response.json
 
   # Part 3 · bonus · continuous deployment — gated by GitHub's own manual
   # approval feature. Configure a "production" environment with a required
@@ -99,11 +107,14 @@ jobs:
       - uses: actions/download-artifact@v4
         with:
           name: image
+          path: ${{ env.EX }}
       - name: Load the exact image deploy-dev built — never rebuild for prod
+        working-directory: ${{ env.EX }}
         run: docker load -i image.tar
 
       - name: Retag and push to this job's Floci's ECR
         id: push
+        working-directory: ${{ env.EX }}
         run: |
           aws ecr create-repository --repository-name ra-cicd 2>/dev/null || true
           PORT=$(docker port floci-ecr-registry 5000/tcp | head -1 | sed 's/.*://')
@@ -116,9 +127,9 @@ jobs:
           echo "tag=$PROD_TAG" >> "$GITHUB_OUTPUT"
 
       - uses: hashicorp/setup-terraform@v3
-      - working-directory: terraform
+      - working-directory: ${{ env.EX }}/terraform
         run: terraform init
-      - working-directory: terraform
+      - working-directory: ${{ env.EX }}/terraform
         run: |
           terraform apply -auto-approve \
             -var environment=prod \
@@ -129,4 +140,6 @@ jobs:
         run: |
           aws lambda invoke --function-name ra-cicd-prod --payload '{"queryStringParameters":{"name":"prod"}}' \
             --cli-binary-format raw-in-base64-out response.json
-          grep -q '"hello, prod"' response.json
+          cat response.json
+          grep -q '"message": "hello, prod"' response.json
+          grep -q '"file_count": 3' response.json

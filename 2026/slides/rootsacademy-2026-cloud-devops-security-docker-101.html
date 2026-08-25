@@ -1481,17 +1481,19 @@ docker scout cves my-app:1.2.0</pre>
   </div>
 </section>
 
-<section class="slide ex" data-input="Choose the exercise repo, no per-student AWS accounts needed">
+<section class="slide ex" data-input="Grant write access, set up the production environment gate">
   <div class="timebox">45 min · pairs</div>
   <h1 class="slide-title">Exercise 4 · build a CI/CD pipeline</h1>
   <div class="subbar">Deploy a Python Lambda to AWS, properly &mdash; against Floci, a local AWS emulator</div>
   <div class="body">
-    <div class="note" style="margin-bottom:14px">Every command talks to <code>localhost:4566</code> instead of a real
-      AWS account, so there is nothing to provision per student and nothing to clean up afterwards.
-      Same AWS CLI, same Terraform AWS provider, same Lambda/ECR APIs.</div>
+    <div class="note" style="margin-bottom:14px">Runs for real, in this repo: branch, implement the <code>TODO</code>
+      in <code>handler.py</code> (count the files in an S3 bucket, put your name in a Terraform variable
+      so the bucket is yours), then open a PR and watch <code>CI</code> go green. Every command talks to
+      <code>localhost:4566</code> instead of a real AWS account, so there is nothing to provision per
+      student and nothing to clean up afterwards.</div>
     <div class="cols c3">
       <div class="card"><span class="tag blue">Part 1</span><h4 style="margin-top:10px;color:var(--blue)">Continuous integration</h4>
-        <ul><li>Lint Python and Terraform, run <code>pytest</code></li>
+        <ul><li>Lint Python and Terraform, run <code>pytest</code> &mdash; red until the S3 file-count logic is implemented</li>
           <li>Runs on every push</li><li>Merge to main only through a PR</li>
           <li>Block the PR when the pipeline fails</li>
           <li>Bonus: matrix over two Python versions</li></ul></div>
@@ -1508,13 +1510,13 @@ docker scout cves my-app:1.2.0</pre>
     </div>
     <div class="input-note">
       <span class="hdr">Input needed</span>
-      Two repos exist: <code>rootsacademy-cicd-exercise</code> (AWS) and the <code>-azure</code> variant.
-      You chose AWS: check the first one still works and copy it to a 2026 repo, with Floci wired
-      in instead of a real AWS account (see the CD workflow's <code>floci/floci</code> service container).
-      No IAM users or ECR repos to provision — each job gets its own throwaway Floci instance.
-      One thing you do need to set up per student repo: a <code>production</code> GitHub environment
-      with a required reviewer, so the Part 3 job actually pauses for approval
-      (repo Settings &rarr; Environments &rarr; New environment).
+      This is now the same repo as exercises 1&ndash;3, not a separate
+      <code>rootsacademy-cicd-exercise</code> fork &mdash; the workflows live at the repo root and only
+      trigger on changes under <code>exercises/exercise-4-cicd/</code>. Before the session: add every
+      student as a collaborator (or to a team) with write access, so they can push a branch and open
+      a PR directly, and create a <code>production</code> GitHub environment with a required reviewer
+      (repo Settings &rarr; Environments) so the Part 3 job actually pauses for approval.
+      No IAM users or ECR repos to provision &mdash; each job gets its own throwaway Floci instance.
     </div>
   </div>
 </section>
@@ -1634,9 +1636,11 @@ docker scout cves my-app:1.2.0</pre>
         Dockerfiles live in <code>exercises/exercise-3-slim-image/</code> in the new repo (below) —
         decide if students should get them as-is or if you still want a separate repo with a solutions branch</td></tr>
       <tr><td>CI/CD demo</td><td>Prepare a repo where you can break and fix a test live</td></tr>
-      <tr><td>CI/CD exercise</td><td><b>Done.</b> Built from scratch (not copied from
-        <code>rootsacademy-cicd-exercise</code>) in <code>exercises/exercise-4-cicd/</code>, wired to
-        Floci instead of a real AWS account — no IAM users or ECR repos to provision</td></tr>
+      <tr><td>CI/CD exercise</td><td><b>Done, and it runs for real in this repo</b> (not a separate
+        <code>rootsacademy-cicd-exercise</code> fork) — workflows are at the repo root, students
+        implement an S3 file-count TODO in <code>handler.py</code> and open a real PR. Still to do:
+        add students as collaborators, and create the <code>production</code> environment with a
+        required reviewer</td></tr>
       <tr><td>Repo</td><td><b>Done.</b> Everything above lives in
         <code>github.com/datarootsio/rootsacademy-devops-docker-101</code> (private)</td></tr>
       <tr><td>Student setup</td><td><b>Done.</b> Install instructions for Docker/git/Python/Terraform/AWS CLI

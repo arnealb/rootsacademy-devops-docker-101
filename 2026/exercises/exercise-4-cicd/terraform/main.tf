@@ -23,6 +23,7 @@ provider "aws" {
     lambda = var.floci_endpoint
     iam    = var.floci_endpoint
     sts    = var.floci_endpoint
+    s3     = var.floci_endpoint
   }
 }
 
@@ -44,4 +45,10 @@ resource "aws_lambda_function" "app" {
   package_type  = "Image"
   image_uri     = "${var.ecr_repository_url}:${var.image_tag}"
   timeout       = 10
+
+  environment {
+    variables = {
+      BUCKET_NAME = aws_s3_bucket.data.id
+    }
+  }
 }

@@ -9,7 +9,7 @@ the first 30 minutes.
 | Tool | Why | Check it works |
 |---|---|---|
 | Docker Desktop | Build and run containers (exercises 1–3) | `docker run hello-world` |
-| Git + a GitHub account | Clone the exercise repos, open PRs (exercise 4) | `git --version` |
+| Git + a GitHub account | Branch and open a PR directly against this repo (exercise 4) | `git --version` |
 | Python 3.11 or newer | Run the exercise apps and tests | `python3 --version` |
 | Terraform >= 1.5 | Deploy the exercise 4 Lambda | `terraform -version` |
 | AWS CLI v2 | Talk to Floci, the local AWS emulator (exercise 4) | `aws --version` |
@@ -72,8 +72,9 @@ services like ECR and Lambda.
 
 ## Accounts
 
-- A **GitHub account**, with access to the `datarootsio` org repos we'll
-  fork/clone during the exercises.
+- A **GitHub account**. For exercise 4 you'll need write access to this repo
+  (`datarootsio/rootsacademy-devops-docker-101`) to push a branch and open a
+  PR directly — the presenter adds you as a collaborator before the session.
 
 ## Anything else?
 

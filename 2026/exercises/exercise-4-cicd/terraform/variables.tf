@@ -27,3 +27,8 @@ variable "image_tag" {
   description = "Immutable image tag to deploy — the pipeline builds it once and passes it in"
   type        = string
 }
+
+variable "student_name" {
+  description = "Your name, lowercase, no spaces — set this in student.auto.tfvars. Names the bucket."
+  type        = string
+}
