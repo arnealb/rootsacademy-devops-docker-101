@@ -6,29 +6,29 @@ slide and copy these in manually (no bulk import on the free plan).
 
 ---
 
-**1. `docker run python:3.12` exits fast. Why?**
-- A) Image is corrupted
-- B) ✅ No TTY, REPL hits EOF
-- C) No default CMD
-- D) Docker Hub rate limit
+**1. Where should credentials live?**
+- A) In a Slack message
+- B) ✅ Never in code or chat
+- C) In a code comment
+- D) In the README
 
-**2. ENTRYPOINT vs CMD — what's true?**
-- A) Same thing, just style
-- B) CMD overrides it
-- C) ✅ ENTRYPOINT always runs
-- D) Only shell form works
+**2. What's the core idea of Agile?**
+- A) Detailed upfront plan
+- B) ✅ Short loops, adjust fast
+- C) No planning at all
+- D) One release at the end
 
-**3. `EXPOSE 8000`, no `-p`. Reachable?**
-- A) Yes, auto-opens
-- B) ✅ No, docs only
-- C) Only `FROM scratch`
-- D) Only on Linux
+**3. A DevOps engineer's main job?**
+- A) Write all the code
+- B) ✅ Build the CI/CD pipeline
+- C) Manage the network
+- D) Replace QA testers
 
-**4. `COPY . .` before `pip install` — every commit reinstalls deps. Fix?**
+**4. To gain time in a Docker build, you should:**
 - A) Add `--no-cache-dir`
-- B) Use a slim base
-- C) ✅ Copy deps file first
-- D) Always `--no-cache`
+- B) ✅ Copy deps before code
+- C) Use a bigger base image
+- D) Skip testing
 
 **5. Install a package, remove it later. Image size?**
 - A) Shrinks, it's gone
