@@ -20,7 +20,7 @@ TODO in `exercise-4-cicd/lambda/handler.py`, and open a real PR against
 `main` to watch `CI` run; one PR gets merged as a class demo to watch `CD`
 deploy to Floci (a local AWS emulator — no real AWS account involved). See
 `exercise-4-cicd/README.md` for the full flow and what needs setting up in
-the repo beforehand (collaborator access, the `production` environment).
+the repo beforehand (collaborator access).
 
 Docker wasn't running in this environment, so exercises 1–3's Dockerfiles
 are written correctly per the slide content but not build-verified end to
@@ -28,5 +28,5 @@ end — do a `docker build` pass before the actual session. Exercise 4's
 pytest/ruff/terraform steps were verified locally; the GitHub Actions
 workflows themselves haven't been run for real yet.
 
-Not covered here: the sli.do intro quiz and the Mentimeter closing quiz
-(`../quiz-mentimeter.md` has the closing one) — those aren't code exercises.
+Not covered here: the Mentimeter warm-up quiz (`../quiz-mentimeter-warmup.md`)
+— that isn't a code exercise. There's no closing quiz this year.

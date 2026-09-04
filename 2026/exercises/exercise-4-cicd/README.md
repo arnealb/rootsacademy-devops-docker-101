@@ -17,7 +17,7 @@ tests/                 # pytest unit tests for the handler
 terraform/             # S3 bucket + IAM roles + Lambda function, pointed at Floci
 ../../../.github/workflows/
   ci.yml               # Part 1 · continuous integration
-  cd.yml               # Part 2 (deploy-dev) + Part 3 bonus (deploy-prod)
+  cd.yml               # Part 2 (deploy-dev)
 pyproject.toml
 ```
 
@@ -75,26 +75,12 @@ whether Floci exists or not.
   Floci's function-URL support isn't guaranteed, so `invoke` is the safer
   choice here).
 
-## Part 3 · bonus · CD to prod (`cd.yml` → `deploy-prod`)
-
-- `needs: deploy-dev`, and gated by a GitHub **environment approval** — add
-  a `production` environment with a required reviewer under repo
-  *Settings → Environments*, and this job pauses until someone approves it.
-  That replaces the slide's "runs only when a git tag is created": simpler
-  to set up for training, and arguably a more common real pattern anyway.
-- Every job gets its own throwaway Floci — the two jobs never share one — so
-  "retag, don't rebuild" is done via `actions/upload-artifact`: `deploy-dev`
-  `docker save`s the image it built, `deploy-prod` downloads it and
-  `docker load`s it back. No registry sits between the two jobs; the same
-  bytes just travel as a plain file.
-- Retags that loaded image `prod-<dev tag>`, pushes it into *this* job's own
-  Floci ECR, `terraform apply -var environment=prod` deploys it (its own S3
-  bucket too — `ra-cicd-<name>-prod`), then it's smoke tested the same way.
+Continuous deployment to production, gated by a GitHub environment approval,
+was cut from this exercise to keep it inside its time box — that pipeline
+design is covered in depth in DevOps 301 instead.
 
 ## Repo setup needed before the session (once)
 
-- A `production` GitHub environment with a required reviewer (Settings →
-  Environments), for Part 3's approval gate.
 - Give students write access (or push access to their own branches) so they
   can open PRs directly against this repo — no forks needed.
 - Consider marking `CI / test`, `CI / terraform` and `CI / build` as

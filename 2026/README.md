@@ -13,7 +13,7 @@ the first 30 minutes.
 | Python 3.11 or newer | Run the exercise apps and tests | `python3 --version` |
 | Terraform >= 1.5 | Deploy the exercise 4 Lambda | `terraform -version` |
 | AWS CLI v2 | Talk to Floci, the local AWS emulator (exercise 4) | `aws --version` |
-| [Floci](https://floci.io) | Local AWS emulator (exercise 4) — LocalStack's discontinued, this is the drop-in replacement | `floci status` |
+| [Floci](https://floci.io) | Local AWS emulator (exercise 4) | `floci status` |
 
 You do **not** need a real AWS account. Exercise 4 runs against
 [Floci](https://floci.io), a local AWS emulator — everything happens on
@@ -79,6 +79,4 @@ services like ECR and Lambda.
 ## Anything else?
 
 If your laptop is locked down by corporate IT and you can't install Docker
-Desktop, say so before the session — there's a cloud fallback (GitHub
-Codespaces) but it needs to be set up in advance, not discovered live during
-exercise 1.
+Desktop, say so before the session.

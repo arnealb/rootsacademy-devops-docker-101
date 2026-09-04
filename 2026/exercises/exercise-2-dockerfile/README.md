@@ -2,8 +2,7 @@
 
 From source code to a running image.
 
-`starter/` is what students get (a real `github.com/datarootsio/rootsacademy-2024-docker-101`
-fork should replace this — this is a stand-in with the same shape: one
+`starter/` is what students get — one
 `main.py`, one `requirements.txt`, and now a commented `Dockerfile` skeleton
 with the five blanks to fill in).
 
